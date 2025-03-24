@@ -31,8 +31,6 @@ DELAY_CLASSES = {"none": NoneWrapper,
 
 LOGGING_SERVICES = ["tb", "wandb", "none"]
 
-ALGOS = ["polyc", "lsac"]
-
 def run(run_all_delay_types:bool,
         run_all_objectives: bool,
         algorithm: str,

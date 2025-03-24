@@ -7,7 +7,7 @@ Installation instructions
 
 We recommend using environments from the Gymnasium robotics benchmark or `InvertedPendulum-v4` however you can easily modify the chosen equilibrium state in `lyap_func_InvertedPendulum.py` to extend to other non goal-conditioned environments.
 
-There should be some updates coming soon so if you would like to collaberate or have any suggestions please feel free to reach out.
+There should be some updates coming soon as we refactor the codebase! If you would like to collaberate or have any suggestions please feel free to reach out.
 
 If you would like to cite this work please use the following:
 `@ X`
