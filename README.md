@@ -1,6 +1,6 @@
 # Efficient Neural Lyapunov Function Approximation with Reinforcement Learning
 
-## NOTE
+### NOTE
 The previous SACLA codebase is being migrated here and therefore there are some files etc missing. We are hoping to finish this by May 2025, however in the meantime feel free to reach out to lm01065@surrey.ac.uk with any questions
 
 Installation instructions
