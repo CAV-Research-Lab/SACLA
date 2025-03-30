@@ -14,35 +14,28 @@ import orbax.checkpoint as ocp
 from flax.training import orbax_utils
 from flax.core import FrozenDict
 
-# from gymnasium.spaces.dict import Dict
-
 from prob_lyap.utils.type_aliases import ReplayBufferSamplesNp, RLTrainState, CustomTrainState, LyapConf
 from prob_lyap.utils import utils
 from prob_lyap.lyap_func import Lyap_net
-from prob_lyap.lyap_func_InvertedPendulum import Lyap_net_IP
 from prob_lyap.world_model import WorldModel
-from prob_lyap.objectives import get_objective
 
-from stable_baselines3.common.buffers import RolloutBuffer
 
 from copy import deepcopy
 from typing import Callable
 
 from typing import Dict
-import copy
 
 class Lyap_SAC(sbx.SAC):    
     def __init__(self, lyap_config: LyapConf, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.objective_fn = get_objective(lyap_config.objective)
-        self.learning_rate = lyap_config.actor_lr
+        self.objective_fn = lambda r, lyr, b: (b * -lyr) + ((1-b) * r )
         self.lyap_config = lyap_config
-        self.rng = random.PRNGKey(lyap_config.seed)# Take in as arg or random.PRNGKey(1)
+        self.rng = random.PRNGKey(lyap_config.seed)
         self.debug = lyap_config.debug
         
         lyap = Lyap_net(lyap_config.n_hidden, lyap_config.n_layers)        
 
-        if isinstance(self.env.observation_space.sample(), Dict): # For fetch envs
+        if isinstance(self.env.observation_space.sample(), Dict): 
             wm = WorldModel(sum([x.shape[0] for x in list(self.env.observation_space.values())]))
         elif lyap_config.env_id=="InvertedPendulum-v4":
             wm = WorldModel(self.env.observation_space.shape[0])
@@ -51,12 +44,11 @@ class Lyap_SAC(sbx.SAC):
             
         lyap_key, wm_key, self.rng = random.split(self.rng, num=3)
         self.lyap_state = utils.create_train_state("lyapunov", lyap_key, lyap, lyap_config.lyap_lr, self.env)
-        self.wm_state = utils.create_train_state("world model", wm_key, wm, lyap_config.wm_lr, self.env) # For now use the same lr, change in future
+        self.wm_state = utils.create_train_state("world model", wm_key, wm, lyap_config.wm_lr, self.env) 
         self.ckpt_dir = lyap_config.ckpt_dir
         self.beta = lyap_config.beta
-
         # Checkpoints
-        options = ocp.CheckpointManagerOptions(max_to_keep=None, create=True)
+        options = ocp.CheckpointManagerOptions(max_to_keep=100, create=True)
         checkpointer = ocp.Checkpointer(ocp.PyTreeCheckpointHandler())
         self.checkpoint_manager = ocp.CheckpointManager(self.ckpt_dir, checkpointers=checkpointer, options=options)
 
@@ -92,9 +84,13 @@ class Lyap_SAC(sbx.SAC):
             lyap_state, lyap_loss, lyap_risks, v_candidates_mean, key = Lyap_net.update(lyap_state,
                                                            wm_state,
                                                            actor_state,
+                                                        #    slice(data.actions),
+                                                        #    slice(data.achieved_goals),
+                                                        #    slice(data.desired_goals),
                                                            slice(data.observations),
+                                                        #    slice(data.next_observations),
                                                            key)
-
+            
             (
                 qf_state,
                 (qf_loss_value, ent_coef_value),
@@ -128,13 +124,11 @@ class Lyap_SAC(sbx.SAC):
                                                            slice(data.actions),
                                                            slice(data.next_observations))
 
-
             info: FrozenDict[str, jnp.ndarray] = FrozenDict({"v_candidates mean": v_candidates_mean,
                                                             "lyap_lr": jnp.array(lyap_state.learning_rate),
                                                             "sigma_mean": wm_info["avg sigma"],
-                                                            "mu_mean": wm_info["avg mu"],
-                                                            "wm_abs_loss": wm_info["abs_diff"],
                                                             "wm_learning_rate": jnp.array(wm_state.learning_rate)}) # Make adaptive incase of scheduling?
+
 
         return (
             qf_state,
@@ -213,20 +207,16 @@ class Lyap_SAC(sbx.SAC):
         self.logger.record("train/lyap_loss", lyap_loss.item())
         self.logger.record("train/wm_loss", wm_loss.item())
 
-        # Info: FrozenDict of info for logging
         for key, value in info.items():
-            try:
-                self.logger.record(f"train/{key}", value.item()) # .item()
-            except:
-                breakpoint()
+            self.logger.record(f"train/{key}", value.item()) # .item()
 
-        # Checkpoint lyap_state 
         if self.lyap_config.logging != "none" and not self.lyap_config.debug and (self.num_timesteps % self.lyap_config.ckpt_every == 0):
             self.save_state()
 
     def save_state(self) -> None:
+        self.lyap_config.ckpt_dir = str(self.lyap_config.ckpt_dir)
         ckpt = {'lyap_state': self.lyap_state,
-                 'config': self.lyap_config.__str__(),
+                 'config': self.lyap_config.__dict__,
                  'actor_state': self.policy.actor_state,
                  'wm_state': self.wm_state}
 
@@ -238,23 +228,14 @@ class Lyap_SAC(sbx.SAC):
             step = self.checkpoint_manager.latest_step()
         assert step, f"Step should be an integer. Step: {step}"
         click.secho(f"Loading step: {step}", fg="green")
+
         restored_ckpt = self.checkpoint_manager.restore(step)
+
         self.lyap_state = CustomTrainState(**restored_ckpt['lyap_state'], apply_fn=self.lyap_state.apply_fn, tx=None)
         self.lyap_config = restored_ckpt['config']
         self.policy.actor_state = TrainState(**restored_ckpt["actor_state"], apply_fn=self.policy.actor_state.apply_fn, tx=None)
         self.lyap_config = restored_ckpt['config']
         self.wm_state = CustomTrainState(**restored_ckpt['wm_state'], apply_fn=self.wm_state.apply_fn, tx=None)
 
-        # Assert actor params are now equal (Default vs Loaded)
-        # assert not utils.params_equal(prev_actor_params['params'], self.policy.actor_state.params['params']), "Updated params same as default"
-        # assert utils.params_equal(restored_ckpt['actor_state']['params']['params'], self.policy.actor_state.params['params']), "Updated params different to loaded params"
-
-        # # Assert lyap params are now equal (Default vs Loaded)
-        # assert not utils.params_equal(prev_lyap_params['params'], self.lyap_state.params['params']), "Updated params same as default"
-        # assert utils.params_equal(restored_ckpt['lyap_state']['params']['params'], self.lyap_state.params['params']), "Updated params different to loaded params"
-
-        # # Assert wm params are now equal (Default vs Loaded)
-        # assert not utils.params_equal(prev_wm_params['params'], self.wm_state.params['params']), "Updated params same as default"
-        # assert utils.params_equal(restored_ckpt['wm_state']['params']['params'], self.wm_state.params['params']), "Updated params different to loaded params"
-
         return restored_ckpt
+
