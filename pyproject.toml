@@ -9,6 +9,7 @@ authors = [
 ]
 dependencies = [
     "flax",
+    "jax[cuda]",
     "gymnasium",
     "gymnasium-robotics",
     "stable-baselines3",

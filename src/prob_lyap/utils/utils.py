@@ -17,10 +17,6 @@ from gymnasium import spaces
 import optax
 import jax
 
-# Should maybe have seperate utils for testing
-# from sbx.common.policies.BaseJaxPolicy import prepare_obs
-
-
 def create_train_state(model_name: Literal['world model', 'lyapunov'], rng, model, learning_rate, env):
     if isinstance(env.observation_space, spaces.Dict):
         n_obs = sum([x.shape[0] for x in list(env.observation_space.values())])
@@ -91,9 +87,9 @@ def seed_modules(env: gym.Env, seed: int):
     obs, reset_info = env.reset(seed=seed)
     return obs, reset_info, env
 
-def get_model_dir(use_test_dir: bool, test_conf: LyapConf, delay_type: gym.Wrapper, objective: str, run_id: int, algorithm: str):
+def get_model_dir(use_test_dir: bool, test_conf: LyapConf, beta: float, run_id: int, algorithm: str):
     if use_test_dir:
-        ckpt_dir = Path(__file__).parent / "models" / delay_type.__name__ / objective 
+        ckpt_dir = Path(__file__).parent / "models" 
     else:
         ckpt_dir = get_ckpt_dir(test_conf, create=False, algorithm=algorithm)[0].parent
 
@@ -106,12 +102,12 @@ def get_model_dir(use_test_dir: bool, test_conf: LyapConf, delay_type: gym.Wrapp
     return ckpt_dir
 
 
-def get_ckpt_dir(lyap_config: LyapConf, algorithm: str="lsac", create=True):
+def get_ckpt_dir(lyap_config: LyapConf, create=True):
     '''
     Creates the default checkpoint directory from the provided config
     '''
     base_dir = Path.home() / ".prob_lyap" / "ckpts"        
-    ckpt_dir = base_dir / algorithm / lyap_config.env_id / lyap_config.delay_type.__name__ / lyap_config.objective
+    ckpt_dir = base_dir / lyap_config.env_id 
     if create: ckpt_dir.mkdir(parents=True, exist_ok=True)    
     run_id = len(os.listdir(ckpt_dir))
     ckpt_dir = ckpt_dir / str(run_id)
@@ -175,3 +171,4 @@ def get_from_checkpoint(step: Optional[int] = None, model = None):
     model.lyap_config = ckpt["config"]
 
     return model
+
