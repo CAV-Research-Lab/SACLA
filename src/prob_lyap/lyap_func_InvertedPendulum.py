@@ -1,23 +1,12 @@
-from functools import partial
 import numpy as np
-import sbx
-import gymnasium as gym
 
-import flax
 import flax.linen as nn
 from flax.training.train_state import TrainState
-from flax.core import FrozenDict
 
 import jax
 import jax.numpy as jnp
-import jax.random as random
 
-from stable_baselines3.common.buffers import ReplayBuffer
-from stable_baselines3.common.noise import ActionNoise
 
-from sbx.common.off_policy_algorithm import OffPolicyAlgorithmJax
-from sbx.common.type_aliases import ReplayBufferSamplesNp, RLTrainState
-from sbx.sac.policies import SACPolicy
 
 class Lyap_net_IP(nn.Module):
     lyap_n_hidden: int
@@ -28,7 +17,7 @@ class Lyap_net_IP(nn.Module):
         x = nn.tanh(nn.Dense(self.lyap_n_hidden, name="input layer")(x))
         for i in range(self.lyap_n_layers):
             # x = nn.tanh(nn.Dense(self.lyap_n_hidden, name=f"hidden layer_{i}")(x))
-           x = nn.tanh(nn.Dense(self.lyap_n_hidden, name=f"hidden layer")(x))
+           x = nn.tanh(nn.Dense(self.lyap_n_hidden, name="hidden layer")(x))
         lyapunov_value = jnp.abs(nn.Dense(1, name="output layer")(x)) # relu made it always predict zero
         return lyapunov_value
 

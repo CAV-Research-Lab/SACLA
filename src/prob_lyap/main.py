@@ -1,26 +1,21 @@
 import gymnasium as gym
-import gymnasium_robotics
 from gymnasium.spaces import Dict
-from gymnasium.wrappers import FlattenObservation
+import gymnasium_robotics
 
 from prob_lyap.utils.utils import seed_modules, get_ckpt_dir, get_most_free_gpu
 from prob_lyap.lyap_SAC import Lyap_SAC
 from prob_lyap.lyap_SAC_invertedpendulum import Lyap_SAC_IP
-from prob_lyap.lyap_func_InvertedPendulum import Lyap_net_IP
 
 from pprint import pprint
 from copy import deepcopy
 import os
-import jax.numpy as jnp
 from pathlib import Path
 import jax
 
 from prob_lyap.utils.type_aliases import LyapConf
 import click
-from typing import Literal, Optional
-from enum import Enum
+from typing import Optional
 import ast
-import sbx
 
 DEVICES = ["auto", "cpu", "cuda"]
 

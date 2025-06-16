@@ -7,8 +7,6 @@ import jax.numpy as jnp
 
 import numpy as np
 import gymnasium as gym
-import gymnasium_robotics
-from gymnasium.wrappers import FlattenObservation
 
 import matplotlib.pyplot as plt
 import click
@@ -18,7 +16,6 @@ from collections import namedtuple, OrderedDict
 from prob_lyap.lyap_SAC import Lyap_SAC
 from prob_lyap.lyap_func import Lyap_net
 from prob_lyap.pretrained.PID import PID
-from prob_lyap.utils.wrappers_rd import NoneWrapper#, UnseenRandomDelayWrapper, AugmentedRandomDelayWrapper
 from prob_lyap.utils.type_aliases import LyapConf
 from prob_lyap.utils import utils
 
@@ -118,10 +115,10 @@ def get_p_name(policies: dict):
 @click.option("--random", is_flag=True, default=False, type=bool, help="Use a random policy instead of ~optimal policy", show_default=True)
 @click.option("--zero", is_flag=True, default=False, type=bool, help="Use zero-action policy instead of ~optimal policy", show_default=True)
 @click.option("-id", "--run-id", default=-1, type=int, help="Run id from logs/ckpts (if -1 just use the latest)")
-@click.option("--use-test-dir", type=bool, default=False, help=f"Use the default location for modles (~/.prob_lyap/... or ./models)", show_default=True)
+@click.option("--use-test-dir", type=bool, default=False, help="Use the default location for modles (~/.prob_lyap/... or ./models)", show_default=True)
 @click.option("-nh", "--n-hidden", type=int, default=16, help="Number of hidden neurons in Lyapunov neural network", show_default=True)
 @click.option("-nl", "--n-layers", type=int, default=1, help="Number of mlp layers in Lyapunov neural network", show_default=True)
-@click.option("--verbose", type=bool, is_flag=True, default=False, help=f"output extra config information", show_default=True)
+@click.option("--verbose", type=bool, is_flag=True, default=False, help="output extra config information", show_default=True)
 @click.option("--hide-plots", type=bool, is_flag=True, default=False, help="Hide plots so they don't show you just get the stats", show_default=True)
 @click.option("--full-experiment", type=bool, is_flag=True, default=False, help="runs full experiment for all seeds", show_default=True)
 @click.option("--df-file", type=str, default="\0", help="Save dataframe from run as csv with given filename")

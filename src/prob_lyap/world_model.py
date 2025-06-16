@@ -4,12 +4,10 @@ from jax import random
 import flax
 import flax.linen as nn
 from flax.training.train_state import TrainState
-import optax
 import distrax
 import gymnasium as gym
 import numpy as np
 # from prob_lyap.lyap_func import Lyap_net
-from gymnasium.spaces import Dict
 
 class WorldModel(nn.Module):
     num_outputs: int
